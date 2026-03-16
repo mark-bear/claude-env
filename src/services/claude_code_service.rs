@@ -49,20 +49,27 @@ impl ClaudeSettings {
         Ok(())
     }
 
-    pub fn set_api_config(&mut self, api_key: &str, base_url: &str) {
+    pub fn set_api_config(&mut self, api_key: &str, base_url: &str, model: Option<&str>) {
         self.env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), api_key.to_string());
         self.env.insert("ANTHROPIC_BASE_URL".to_string(), base_url.to_string());
+        if let Some(m) = model {
+            self.env.insert("ANTHROPIC_MODEL".to_string(), m.to_string());
+        } else {
+            self.env.remove("ANTHROPIC_MODEL");
+        }
     }
 
-    pub fn get_api_config(&self) -> Option<(String, String)> {
+    pub fn get_api_config(&self) -> Option<(String, String, Option<String>)> {
         let key = self.env.get("ANTHROPIC_AUTH_TOKEN")?;
         let url = self.env.get("ANTHROPIC_BASE_URL")?;
-        Some((key.clone(), url.clone()))
+        let model = self.env.get("ANTHROPIC_MODEL").cloned();
+        Some((key.clone(), url.clone(), model))
     }
 
     pub fn clear_api_config(&mut self) {
         self.env.remove("ANTHROPIC_AUTH_TOKEN");
         self.env.remove("ANTHROPIC_BASE_URL");
+        self.env.remove("ANTHROPIC_MODEL");
     }
 }
 
@@ -70,15 +77,15 @@ pub struct ClaudeCodeService;
 
 impl ClaudeCodeService {
     /// Sync the active API config to Claude Code settings
-    pub fn sync_api_config(api_key: &str, base_url: &str) -> Result<()> {
+    pub fn sync_api_config(api_key: &str, base_url: &str, model: Option<&str>) -> Result<()> {
         let mut settings = ClaudeSettings::load()?;
-        settings.set_api_config(api_key, base_url);
+        settings.set_api_config(api_key, base_url, model);
         settings.save()?;
         Ok(())
     }
 
     /// Get current API config from Claude Code settings
-    pub fn get_current_config() -> Result<Option<(String, String)>> {
+    pub fn get_current_config() -> Result<Option<(String, String, Option<String>)>> {
         let settings = ClaudeSettings::load()?;
         Ok(settings.get_api_config())
     }

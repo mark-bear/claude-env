@@ -11,7 +11,7 @@ use cli::*;
 #[derive(Parser)]
 #[command(
     name = "claude-env",
-    version = "0.1.2",
+    version = "0.1.3",
     about = "Manage Claude AI coding environments",
     long_about = r#"
 claude-env - A CLI tool for managing Claude AI coding environments
@@ -100,6 +100,7 @@ enum ApiCommands {
     /// EXAMPLES:
     ///     claude-env api add mykey "sk-ant-api03-xxx"
     ///     claude-env api add work "sk-ant-api03-xxx" --base-url "https://api.anthropic.com"
+    ///     claude-env api add opus "sk-ant-api03-xxx" --model "claude-opus-4-6"
     Add {
         /// Display name for this configuration (e.g., "personal", "work")
         name: String,
@@ -108,6 +109,9 @@ enum ApiCommands {
         /// Base URL for the Anthropic API [default: https://api.anthropic.com]
         #[arg(long)]
         base_url: Option<String>,
+        /// Default model to use with this API (optional)
+        #[arg(long)]
+        model: Option<String>,
     },
     /// List all API configurations
     ///
@@ -388,9 +392,9 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Api { action } => match action {
-            ApiCommands::Add { name, api_key, base_url } => {
+            ApiCommands::Add { name, api_key, base_url, model } => {
                 let base_url = base_url.unwrap_or_else(|| "https://api.anthropic.com".to_string());
-                handle_api_add(&name, &api_key, &base_url)?;
+                handle_api_add(&name, &api_key, &base_url, model)?;
             }
             ApiCommands::List => {
                 handle_api_list()?;

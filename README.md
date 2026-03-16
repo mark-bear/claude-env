@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- **API 配置管理**: 管理多个 Claude API 配置，支持快速切换
+- **API 配置管理**: 管理多个 Claude API 配置，支持快速切换，可设置默认模型
 - **计划管理**: 创建和管理项目开发计划，支持版本控制和回滚
 - **模板系统**: 从 XML 文件创建可复用的计划模板
 - **项目关联**: 将本地项目路径与计划关联
@@ -81,13 +81,14 @@ claude-env init
 
 #### 添加配置
 ```bash
-claude-env api add <NAME> <API_KEY> [--base-url <URL>]
+claude-env api add <NAME> <API_KEY> [--base-url <URL>] [--model <MODEL>]
 ```
 
 示例：
 ```bash
 claude-env api add "Production" "sk-ant-api03-..."
 claude-env api add "Staging" "sk-ant-api03-..." --base-url "https://staging.api.anthropic.com"
+claude-env api add "Claude Opus" "sk-ant-api03-..." --model "claude-opus-4-6"
 ```
 
 #### 列出所有配置
@@ -97,12 +98,12 @@ claude-env api list
 
 输出示例：
 ```
-┌──────────────┬─────────────┬──────────────────────────────┬────────┬─────────────────┐
-│ ID           │ Name        │ Base URL                     │ Active │ Created At      │
-├──────────────┼─────────────┼──────────────────────────────┼────────┼─────────────────┤
-│ production   │ Production  │ https://api.anthropic.com    │ ✓      │ 2024-01-15 09:30│
-│ staging      │ Staging     │ https://staging.api.anth...  │ ✗      │ 2024-01-15 09:35│
-└──────────────┴─────────────┴──────────────────────────────┴────────┴─────────────────┘
+┌──────────────┬─────────────┬──────────────────────────────┬──────────────────┬────────┬─────────────────┐
+│ ID           │ Name        │ Base URL                     │ Model            │ Active │ Created At      │
+├──────────────┼─────────────┼──────────────────────────────┼──────────────────┼────────┼─────────────────┤
+│ production   │ Production  │ https://api.anthropic.com    │ claude-opus-4-6  │ ✓      │ 2024-01-15 09:30│
+│ staging      │ Staging     │ https://staging.api.anth...  │ -                │ ✗      │ 2024-01-15 09:35│
+└──────────────┴─────────────┴──────────────────────────────┴──────────────────┴────────┴─────────────────┘
 ```
 
 #### 查看配置详情
@@ -281,6 +282,7 @@ eval $(claude-env env enter ~/projects/my-app)
 输出的环境变量包括：
 - `ANTHROPIC_API_KEY` - API 密钥
 - `ANTHROPIC_BASE_URL` - API 基础 URL
+- `ANTHROPIC_MODEL` - 默认模型（如果配置）
 - `CLAUDE_ENV_PLAN` - 当前计划的 ID
 - `CLAUDE_ENV_PLAN_NAME` - 当前计划的名称
 
@@ -358,12 +360,15 @@ eval $(claude-env env enter .)
         <name>Personal</name>
         <api_key>sk-ant-api03-...</api_key>
         <base_url>https://api.anthropic.com</base_url>
+        <model>claude-opus-4-6</model>
         <is_active>true</is_active>
         <created_at>2024-01-15T09:30:00Z</created_at>
         <updated_at>2024-01-15T09:30:00Z</updated_at>
     </api_config>
 </api_configs>
 ```
+
+**注意**：`model` 字段是可选的，如果未设置则不会出现在 XML 中。
 
 #### plans.xml
 ```xml
@@ -394,6 +399,7 @@ eval $(claude-env env enter .)
 |--------|------|
 | `ANTHROPIC_API_KEY` | 当前激活的 API 密钥 |
 | `ANTHROPIC_BASE_URL` | API 基础 URL |
+| `ANTHROPIC_MODEL` | 默认模型（如果配置） |
 | `CLAUDE_ENV_PLAN` | 关联计划的 ID |
 | `CLAUDE_ENV_PLAN_NAME` | 关联计划的名称 |
 
@@ -478,6 +484,13 @@ cargo fmt
 MIT License
 
 ## 更新日志
+
+### v0.1.3
+- 新增 API 配置的 `model` 字段，支持设置默认模型
+- `api add` 命令新增 `--model` 参数
+- `api list` 显示 Model 列
+- `api activate` 和 `api sync` 自动同步 model 到 Claude Code settings
+- `env enter` 输出 `ANTHROPIC_MODEL` 环境变量
 
 ### v0.1.2
 - 添加 Claude Code 配置同步功能

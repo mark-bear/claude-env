@@ -11,6 +11,8 @@ pub struct ApiConfig {
     pub api_key: String,
     #[serde(rename = "base_url")]
     pub base_url: String,
+    #[serde(rename = "model", skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     #[serde(rename = "is_active")]
     pub is_active: bool,
     #[serde(rename = "created_at")]

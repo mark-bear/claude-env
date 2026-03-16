@@ -11,7 +11,7 @@ use crate::services::ClaudeCodeService;
 pub struct ApiService;
 
 impl ApiService {
-    pub fn add_config(name: &str, api_key: &str, base_url: &str) -> Result<ApiConfig> {
+    pub fn add_config(name: &str, api_key: &str, base_url: &str, model: Option<&str>) -> Result<ApiConfig> {
         let mut configs = Self::load_all()?;
 
         // Check if name already exists
@@ -31,6 +31,7 @@ impl ApiService {
             name: name.to_string(),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
+            model: model.map(|s| s.to_string()),
             is_active: configs.configs.is_empty(), // First config is active by default
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -42,7 +43,7 @@ impl ApiService {
 
         // If this is the first config, sync to Claude Code
         if is_first {
-            if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url) {
+            if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.model.as_deref()) {
                 eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
             }
         }
@@ -84,7 +85,7 @@ impl ApiService {
         Self::save_all(&configs)?;
 
         // Sync to Claude Code settings
-        if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url) {
+        if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.model.as_deref()) {
             eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
         }
 
@@ -110,6 +111,7 @@ impl ApiService {
                 if let Err(e) = ClaudeCodeService::sync_api_config(
                     &new_active.api_key,
                     &new_active.base_url,
+                    new_active.model.as_deref(),
                 ) {
                     eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
                 }
@@ -122,6 +124,7 @@ impl ApiService {
                     if let Err(e) = ClaudeCodeService::sync_api_config(
                         &new_active.api_key,
                         &new_active.base_url,
+                        new_active.model.as_deref(),
                     ) {
                         eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
                     }

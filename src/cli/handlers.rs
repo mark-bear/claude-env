@@ -11,6 +11,8 @@ struct ApiConfigRow {
     name: String,
     #[tabled(rename = "Base URL")]
     base_url: String,
+    #[tabled(rename = "Model")]
+    model: String,
     #[tabled(rename = "Active")]
     is_active: String,
     #[tabled(rename = "Created At")]
@@ -18,10 +20,13 @@ struct ApiConfigRow {
 }
 
 // API Handlers
-pub fn handle_api_add(name: &str, api_key: &str, base_url: &str) -> Result<()> {
-    let config = ApiService::add_config(name, api_key, base_url)?;
+pub fn handle_api_add(name: &str, api_key: &str, base_url: &str, model: Option<String>) -> Result<()> {
+    let config = ApiService::add_config(name, api_key, base_url, model.as_deref())?;
     println!("API config added successfully: {}", config.name);
     println!("ID: {}", config.id);
+    if let Some(m) = &config.model {
+        println!("Model: {}", m);
+    }
     Ok(())
 }
 
@@ -39,6 +44,7 @@ pub fn handle_api_list() -> Result<()> {
             id: c.id,
             name: c.name,
             base_url: c.base_url,
+            model: c.model.unwrap_or_else(|| "-".to_string()),
             is_active: if c.is_active { "✓".to_string() } else { "✗".to_string() },
             created_at: c.created_at.format("%Y-%m-%d %H:%M").to_string(),
         })
@@ -55,6 +61,7 @@ pub fn handle_api_get(id: Option<&str>) -> Result<()> {
     println!("  ID:          {}", config.id);
     println!("  Name:        {}", config.name);
     println!("  Base URL:    {}", config.base_url);
+    println!("  Model:       {}", config.model.as_deref().unwrap_or("-"));
     println!("  API Key:     {}***", &config.api_key[..8]);
     println!("  Active:      {}", if config.is_active { "Yes" } else { "No" });
     println!("  Created At:  {}", config.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
@@ -73,6 +80,9 @@ pub fn handle_api_activate(id: &str) -> Result<()> {
             println!("Synced to Claude Code settings: {}", path.display());
             println!("  API Key: {}...", &config.api_key[..config.api_key.len().min(12)]);
             println!("  Base URL: {}", config.base_url);
+            if let Some(model) = &config.model {
+                println!("  Model: {}", model);
+            }
         }
         Err(e) => {
             eprintln!("Warning: Could not determine Claude Code settings path: {}", e);
@@ -313,6 +323,9 @@ pub fn handle_env_enter(path: &str) -> Result<()> {
     println!("");
     println!("export ANTHROPIC_API_KEY=\"{}\"", api_config.api_key);
     println!("export ANTHROPIC_BASE_URL=\"{}\"", api_config.base_url);
+    if let Some(model) = &api_config.model {
+        println!("export ANTHROPIC_MODEL=\"{}\"", model);
+    }
     println!("export CLAUDE_ENV_PLAN=\"{}\"", project.associated_plan);
     println!("export CLAUDE_ENV_PLAN_NAME=\"{}\"", plan.name);
     println!("cd \"{}\"", project.path);
@@ -339,8 +352,11 @@ pub fn handle_api_sync() -> Result<()> {
     println!("Syncing active API config to Claude Code settings...");
     println!("  Config: {} ({})", config.name, config.id);
     println!("  Base URL: {}", config.base_url);
+    if let Some(model) = &config.model {
+        println!("  Model: {}", model);
+    }
 
-    ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url)?;
+    ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.model.as_deref())?;
 
     match ClaudeCodeService::get_settings_path() {
         Ok(path) => println!("\nSuccessfully synced to: {}", path.display()),
