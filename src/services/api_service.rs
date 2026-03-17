@@ -170,6 +170,16 @@ impl ApiService {
             Some(true) => {
                 let config = configs.get_config(id).unwrap().clone();
                 Self::save_all(&configs)?;
+                // Sync if this is the active config
+                if config.is_active {
+                    if let Err(e) = ClaudeCodeService::sync_api_config(
+                        &config.api_key,
+                        &config.base_url,
+                        config.active_model.as_deref(),
+                    ) {
+                        eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
+                    }
+                }
                 Ok(config)
             }
             Some(false) => anyhow::bail!("Model '{}' already exists in API config '{}'", model, id),
