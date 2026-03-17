@@ -26,12 +26,17 @@ impl ApiService {
             .unwrap_or("default")
             .to_lowercase();
 
+        // Handle initial model if provided
+        let models = model.map(|m| vec![m.to_string()]).unwrap_or_default();
+        let active_model = model.map(|m| m.to_string());
+
         let config = ApiConfig {
             id,
             name: name.to_string(),
             api_key: api_key.to_string(),
             base_url: base_url.to_string(),
-            model: model.map(|s| s.to_string()),
+            models,
+            active_model,
             is_active: configs.configs.is_empty(), // First config is active by default
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -43,7 +48,7 @@ impl ApiService {
 
         // If this is the first config, sync to Claude Code
         if is_first {
-            if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.model.as_deref()) {
+            if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.active_model.as_deref()) {
                 eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
             }
         }
@@ -85,7 +90,7 @@ impl ApiService {
         Self::save_all(&configs)?;
 
         // Sync to Claude Code settings
-        if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.model.as_deref()) {
+        if let Err(e) = ClaudeCodeService::sync_api_config(&config.api_key, &config.base_url, config.active_model.as_deref()) {
             eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
         }
 
@@ -111,7 +116,7 @@ impl ApiService {
                 if let Err(e) = ClaudeCodeService::sync_api_config(
                     &new_active.api_key,
                     &new_active.base_url,
-                    new_active.model.as_deref(),
+                    new_active.active_model.as_deref(),
                 ) {
                     eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
                 }
@@ -124,7 +129,7 @@ impl ApiService {
                     if let Err(e) = ClaudeCodeService::sync_api_config(
                         &new_active.api_key,
                         &new_active.base_url,
-                        new_active.model.as_deref(),
+                        new_active.active_model.as_deref(),
                     ) {
                         eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
                     }
@@ -154,5 +159,78 @@ impl ApiService {
     fn save_all(configs: &ApiConfigs) -> Result<()> {
         let path = get_api_configs_path()?;
         save_xml(path, configs).context("Failed to save API configs")
+    }
+
+    // Model management methods
+
+    pub fn add_model(id: &str, model: &str) -> Result<ApiConfig> {
+        let mut configs = Self::load_all()?;
+
+        match configs.add_model(id, model) {
+            Some(true) => {
+                let config = configs.get_config(id).unwrap().clone();
+                Self::save_all(&configs)?;
+                Ok(config)
+            }
+            Some(false) => anyhow::bail!("Model '{}' already exists in API config '{}'", model, id),
+            None => anyhow::bail!("API config '{}' not found", id),
+        }
+    }
+
+    pub fn remove_model(id: &str, model: &str) -> Result<ApiConfig> {
+        let mut configs = Self::load_all()?;
+
+        match configs.remove_model(id, model) {
+            Some(true) => {
+                let config = configs.get_config(id).unwrap().clone();
+                Self::save_all(&configs)?;
+                // Sync if this is the active config
+                if config.is_active {
+                    if let Err(e) = ClaudeCodeService::sync_api_config(
+                        &config.api_key,
+                        &config.base_url,
+                        config.active_model.as_deref(),
+                    ) {
+                        eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
+                    }
+                }
+                Ok(config)
+            }
+            Some(false) => anyhow::bail!("Model '{}' not found in API config '{}'", model, id),
+            None => anyhow::bail!("API config '{}' not found", id),
+        }
+    }
+
+    pub fn select_model(id: &str, model: &str) -> Result<ApiConfig> {
+        let mut configs = Self::load_all()?;
+
+        match configs.select_model(id, model) {
+            Some(true) => {
+                let config = configs.get_config(id).unwrap().clone();
+                Self::save_all(&configs)?;
+                // Sync if this is the active config
+                if config.is_active {
+                    if let Err(e) = ClaudeCodeService::sync_api_config(
+                        &config.api_key,
+                        &config.base_url,
+                        config.active_model.as_deref(),
+                    ) {
+                        eprintln!("Warning: Failed to sync to Claude Code settings: {}", e);
+                    }
+                }
+                Ok(config)
+            }
+            Some(false) => anyhow::bail!("Model '{}' is not available in API config '{}'", model, id),
+            None => anyhow::bail!("API config '{}' not found", id),
+        }
+    }
+
+    pub fn list_models(id: &str) -> Result<(Vec<String>, Option<String>)> {
+        let configs = Self::load_all()?;
+
+        match configs.get_config(id) {
+            Some(config) => Ok((config.models.clone(), config.active_model.clone())),
+            None => anyhow::bail!("API config '{}' not found", id),
+        }
     }
 }

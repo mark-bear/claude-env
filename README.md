@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- **API 配置管理**: 管理多个 Claude API 配置，支持快速切换，可设置默认模型
+- **API 配置管理**: 管理多个 Claude API 配置，支持快速切换，可为每个配置添加多个模型并选择活跃模型
 - **计划管理**: 创建和管理项目开发计划，支持版本控制和回滚
 - **模板系统**: 从 XML 文件创建可复用的计划模板
 - **项目关联**: 将本地项目路径与计划关联
@@ -98,12 +98,12 @@ claude-env api list
 
 输出示例：
 ```
-┌──────────────┬─────────────┬──────────────────────────────┬──────────────────┬────────┬─────────────────┐
-│ ID           │ Name        │ Base URL                     │ Model            │ Active │ Created At      │
-├──────────────┼─────────────┼──────────────────────────────┼──────────────────┼────────┼─────────────────┤
-│ production   │ Production  │ https://api.anthropic.com    │ claude-opus-4-6  │ ✓      │ 2024-01-15 09:30│
-│ staging      │ Staging     │ https://staging.api.anth...  │ -                │ ✗      │ 2024-01-15 09:35│
-└──────────────┴─────────────┴──────────────────────────────┴──────────────────┴────────┴─────────────────┘
+┌──────────────┬─────────────┬──────────────────────────────┬──────────────────────────┬────────┬─────────────────┐
+│ ID           │ Name        │ Base URL                     │ Models                   │ Active │ Created At      │
+├──────────────┼─────────────┼──────────────────────────────┼──────────────────────────┼────────┼─────────────────┤
+│ production   │ Production  │ https://api.anthropic.com    │ claude-opus-4-6 (3/3)    │ ✓      │ 2024-01-15 09:30│
+│ staging      │ Staging     │ https://staging.api.anth...  │ -                        │ ✗      │ 2024-01-15 09:35│
+└──────────────┴─────────────┴──────────────────────────────┴──────────────────────────┴────────┴─────────────────┘
 ```
 
 #### 查看配置详情
@@ -126,6 +126,56 @@ claude-env api delete <ID>
 #### 清空所有配置
 ```bash
 claude-env api clear
+```
+
+#### 管理模型
+
+每个 API 配置可以关联多个模型，其中一个被设置为活跃模型。
+
+**添加模型到配置：**
+```bash
+claude-env api model add <API_ID> <MODEL>
+```
+
+示例：
+```bash
+claude-env api model add production "claude-opus-4-6"
+claude-env api model add production "claude-sonnet-4-6"
+```
+
+**列出配置的所有模型：**
+```bash
+claude-env api model list <API_ID>
+```
+
+输出示例：
+```
+Models for API config 'production':
+  claude-opus-4-6 * (active)
+  claude-sonnet-4-6
+  claude-haiku-4-5
+
+* indicates the currently active model
+```
+
+**选择活跃模型：**
+```bash
+claude-env api model select <API_ID> <MODEL>
+```
+
+示例：
+```bash
+claude-env api model select production "claude-sonnet-4-6"
+```
+
+**从配置移除模型：**
+```bash
+claude-env api model remove <API_ID> <MODEL>
+```
+
+示例：
+```bash
+claude-env api model remove production "claude-haiku-4-5"
 ```
 
 ---
@@ -360,7 +410,11 @@ eval $(claude-env env enter .)
         <name>Personal</name>
         <api_key>sk-ant-api03-...</api_key>
         <base_url>https://api.anthropic.com</base_url>
-        <model>claude-opus-4-6</model>
+        <models>
+            <model>claude-opus-4-6</model>
+            <model>claude-sonnet-4-6</model>
+        </models>
+        <active_model>claude-opus-4-6</active_model>
         <is_active>true</is_active>
         <created_at>2024-01-15T09:30:00Z</created_at>
         <updated_at>2024-01-15T09:30:00Z</updated_at>
@@ -368,7 +422,7 @@ eval $(claude-env env enter .)
 </api_configs>
 ```
 
-**注意**：`model` 字段是可选的，如果未设置则不会出现在 XML 中。
+**注意**：`models` 和 `active_model` 字段是可选的，如果未设置则不会出现在 XML 中。
 
 #### plans.xml
 ```xml
@@ -484,6 +538,14 @@ cargo fmt
 MIT License
 
 ## 更新日志
+
+### v0.1.4
+- **重大改进**：API 配置支持多模型管理
+- 新增 `api model` 子命令组：add、remove、list、select
+- 每个 API 配置可添加多个模型，并选择活跃模型
+- 数据模型变更：`model: Option<String>` → `models: Vec<String>` + `active_model: Option<String>`
+- 活跃模型自动同步到 Claude Code settings
+- 移除模型时自动切换到其他可用模型
 
 ### v0.1.3
 - 新增 API 配置的 `model` 字段，支持设置默认模型

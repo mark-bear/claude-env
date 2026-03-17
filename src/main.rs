@@ -164,6 +164,67 @@ enum ApiCommands {
     /// EXAMPLE:
     ///     claude-env api sync
     Sync,
+    /// Manage models for an API configuration
+    ///
+    /// Add, remove, list, and select models for a specific API config.
+    /// Each API config can have multiple models, with one active at a time.
+    Model {
+        #[command(subcommand)]
+        action: ModelCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum ModelCommands {
+    /// Add a model to an API configuration
+    ///
+    /// Adds a new model to the specified API config's available models.
+    /// If this is the first model, it will be set as active automatically.
+    ///
+    /// EXAMPLE:
+    ///     claude-env api model add mykey "claude-opus-4-6"
+    Add {
+        /// API configuration ID
+        api_id: String,
+        /// Model name to add (e.g., "claude-opus-4-6", "claude-sonnet-4-6")
+        model: String,
+    },
+    /// Remove a model from an API configuration
+    ///
+    /// Removes the specified model from the API config.
+    /// If the removed model was active, another model will be selected automatically.
+    ///
+    /// EXAMPLE:
+    ///     claude-env api model remove mykey "claude-opus-4-6"
+    Remove {
+        /// API configuration ID
+        api_id: String,
+        /// Model name to remove
+        model: String,
+    },
+    /// Select the active model for an API configuration
+    ///
+    /// Sets the specified model as the active model for this API config.
+    /// The model must already be added to the config.
+    ///
+    /// EXAMPLE:
+    ///     claude-env api model select mykey "claude-opus-4-6"
+    Select {
+        /// API configuration ID
+        api_id: String,
+        /// Model name to select as active
+        model: String,
+    },
+    /// List all models for an API configuration
+    ///
+    /// Displays all available models and indicates which one is active.
+    ///
+    /// EXAMPLE:
+    ///     claude-env api model list mykey
+    List {
+        /// API configuration ID
+        api_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -413,6 +474,20 @@ fn main() -> Result<()> {
             }
             ApiCommands::Sync => {
                 handle_api_sync()?;
+            }
+            ApiCommands::Model { action } => match action {
+                ModelCommands::Add { api_id, model } => {
+                    handle_api_model_add(&api_id, &model)?;
+                }
+                ModelCommands::Remove { api_id, model } => {
+                    handle_api_model_remove(&api_id, &model)?;
+                }
+                ModelCommands::Select { api_id, model } => {
+                    handle_api_model_select(&api_id, &model)?;
+                }
+                ModelCommands::List { api_id } => {
+                    handle_api_model_list(&api_id)?;
+                }
             }
         },
         Commands::Plan { action } => match action {
