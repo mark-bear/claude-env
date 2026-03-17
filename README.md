@@ -539,6 +539,10 @@ MIT License
 
 ## 更新日志
 
+### v0.1.5
+- 修复版本号显示问题：从硬编码改为自动读取 Cargo.toml 中的版本
+- 改进：版本号现在与 Cargo.toml 保持同步
+
 ### v0.1.4
 - **重大改进**：API 配置支持多模型管理
 - 新增 `api model` 子命令组：add、remove、list、select

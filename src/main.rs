@@ -11,7 +11,7 @@ use cli::*;
 #[derive(Parser)]
 #[command(
     name = "claude-env",
-    version = "0.1.3",
+    version = env!("CARGO_PKG_VERSION"),
     about = "Manage Claude AI coding environments",
     long_about = r#"
 claude-env - A CLI tool for managing Claude AI coding environments
